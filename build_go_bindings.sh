@@ -1,6 +1,7 @@
 #!/bin/bash
 mkdir -p gen;
 mkdir -p build;
+
 for i in ./v2-core/contracts/interfaces/*.sol; do
 	echo Processing $i...;
 	solc --bin --abi $i -o build --overwrite;
