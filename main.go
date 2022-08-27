@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/zombeer/go-uniswap-info/gen/IUniswapV2Pair"
 	uniinfo "github.com/zombeer/go-uniswap-info/uni-info"
 )
 
@@ -38,10 +37,7 @@ func main() {
 		if err != nil {
 			log.Fatal("not able to get pair address", i, err)
 		}
-		pair, err := IUniswapV2Pair.NewIUniswapV2Pair(pairAddress, client)
-		if err != nil {
-			log.Fatal("not able to get pair at adress", pairAddress.String(), err)
-		}
+		pair := uniinfo.GetUniswapPair(pairAddress, client)
 
 		reserves, _ := pair.GetReserves(&callOpts)
 
@@ -64,12 +60,16 @@ func main() {
 		if err != nil {
 			log.Fatal("error getting token name", err)
 		}
-		log.Printf("%v %v-%v reserves: %v, %v",
+		reserve0 := big.NewFloat(0).SetInt(reserves.Reserve0)
+		reserve1 := big.NewFloat(0).SetInt(reserves.Reserve1)
+		pairPrice := big.NewFloat(0).Quo(reserve0, reserve1)
+		log.Printf("%v %v-%v reserves: %v, %v, price: %v",
 			i,
 			token0Name,
 			token1Name,
 			reserves.Reserve0.String(),
 			reserves.Reserve1.String(),
+			pairPrice.String(),
 		)
 	}
 }

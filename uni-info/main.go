@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/zombeer/go-uniswap-info/gen/IERC20"
 	"github.com/zombeer/go-uniswap-info/gen/IUniswapV2Factory"
+	"github.com/zombeer/go-uniswap-info/gen/IUniswapV2Pair"
 )
 
 func GetClient() *ethclient.Client {
@@ -31,6 +32,14 @@ func GetUniswapFactory(address string, client *ethclient.Client) *IUniswapV2Fact
 		log.Fatal("not able to create factory instance", err)
 	}
 	return factory
+}
+
+func GetUniswapPair(address common.Address, client *ethclient.Client) *IUniswapV2Pair.IUniswapV2Pair {
+	pair, err := IUniswapV2Pair.NewIUniswapV2Pair(address, client)
+	if err != nil {
+		log.Fatal("not able to get uniswap pair at address", address.String(), err)
+	}
+	return pair
 }
 
 func GetToken(adress common.Address, client *ethclient.Client) *IERC20.IERC20 {
