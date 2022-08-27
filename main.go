@@ -6,7 +6,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	uniinfo "github.com/zombeer/go-uniswap-info/uni-info"
+	"github.com/zombeer/go-uniswap-info/uniswap"
 )
 
 const UNISWAP_FACTORY_ADDRESS = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
@@ -14,8 +14,8 @@ const UNISWAP_FACTORY_ADDRESS = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
 func main() {
 	log.Println("Hello WEB3 world!")
 
-	client := uniinfo.GetClient()
-	factory := uniinfo.GetUniswapFactory(UNISWAP_FACTORY_ADDRESS, client)
+	client := uniswap.GetClient()
+	factory := uniswap.GetUniswapFactory(UNISWAP_FACTORY_ADDRESS, client)
 
 	currentBlockNumber, err := client.BlockNumber(context.Background())
 	if err != nil {
@@ -37,39 +37,14 @@ func main() {
 		if err != nil {
 			log.Fatal("not able to get pair address", i, err)
 		}
-		pair := uniinfo.GetUniswapPair(pairAddress, client)
+		pair := uniswap.GetUniswapPair(pairAddress, client)
 
-		reserves, _ := pair.GetReserves(&callOpts)
-
-		tkn0Address, err := pair.Token0(&callOpts)
-		if err != nil {
-			log.Fatal("not able to get token0 address", err)
-		}
-		tkn1Address, err := pair.Token1(&callOpts)
-		if err != nil {
-			log.Fatal("not able to get token1 address", err)
-		}
-		token0 := uniinfo.GetToken(tkn0Address, client)
-		token1 := uniinfo.GetToken(tkn1Address, client)
-
-		token0Name, err := token0.Symbol(&callOpts)
-		if err != nil {
-			log.Fatal("error getting token name", err)
-		}
-		token1Name, err := token1.Symbol(&callOpts)
-		if err != nil {
-			log.Fatal("error getting token name", err)
-		}
-		reserve0 := big.NewFloat(0).SetInt(reserves.Reserve0)
-		reserve1 := big.NewFloat(0).SetInt(reserves.Reserve1)
-		pairPrice := big.NewFloat(0).Quo(reserve0, reserve1)
-		log.Printf("%v %v-%v reserves: %v, %v, price: %v",
+		pairDetails := uniswap.GetPairDetails(pair, big.NewInt(int64(currentBlockNumber)), client)
+		log.Printf("%v [%v-%v], price: %v",
 			i,
-			token0Name,
-			token1Name,
-			reserves.Reserve0.String(),
-			reserves.Reserve1.String(),
-			pairPrice.String(),
+			pairDetails.Token0.Symbol,
+			pairDetails.Token1.Symbol,
+			pairDetails.Price,
 		)
 	}
 }
