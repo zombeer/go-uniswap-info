@@ -6,6 +6,8 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"sort"
+	"sync"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -24,24 +26,6 @@ func GetCallOptsAtBlock(bn int64) bind.CallOpts {
 		Context:     context.Background(),
 		BlockNumber: big.NewInt(bn),
 	}
-}
-
-type Price struct {
-	BlockNumber uint64  `json:"block_number"`
-	Value       float64 `json:"value"`
-}
-
-type TokenInfo struct {
-	Address string `json:"address"`
-	Symbol  string `json:"symbol"`
-}
-
-type PairInfo struct {
-	Address string    `json:"pair_address"`
-	Symbols string    `json:"symbols"`
-	Token0  TokenInfo `json:"token0"`
-	Token1  TokenInfo `json:"token1"`
-	Prices  []Price   `json:"prices"`
 }
 
 // Getting pair info by its hex address string representation
@@ -67,10 +51,38 @@ func GetPairInfo(address string) PairInfo {
 	result.Symbols = fmt.Sprintf("%s-%s", tkn0Symbol, tkn1Symbol)
 	result.Token0 = TokenInfo{Address: tkn0Address.String(), Symbol: tkn0Symbol}
 	result.Token1 = TokenInfo{Address: tkn1Address.String(), Symbol: tkn1Symbol}
+
+	wg := sync.WaitGroup{}
+	prices := []Price{}
+	for i := currentBn - 100; i <= currentBn; i++ {
+		wg.Add(1)
+		go func(i uint64) {
+			prices = append(prices, GetPairPriceAtBn(*pair, int64(i)))
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+
+	sort.Slice(prices, func(i, j int) bool {
+		return prices[i].BlockNumber < prices[j].BlockNumber
+	})
+
+	result.Prices = prices
 	return result
 }
 
-func GetPairPrices(pairAddress string) {}
+func GetPairPriceAtBn(pair IUniswapV2Pair.IUniswapV2Pair, bn int64) Price {
+	callOpts := GetCallOptsAtBlock(bn)
+	reserves, err := pair.GetReserves(&callOpts)
+	if err != nil {
+		log.Fatal("not able to get pair reserves", err)
+	}
+	reserve0 := big.NewFloat(0).SetInt(reserves.Reserve0)
+	reserve1 := big.NewFloat(0).SetInt(reserves.Reserve1)
+	pairPrice := big.NewFloat(0).Quo(reserve0, reserve1)
+	price, _ := pairPrice.Float64()
+	return Price{BlockNumber: uint64(bn), Value: price}
+}
 
 func GetClient() *ethclient.Client {
 	err := godotenv.Load()
@@ -109,5 +121,3 @@ func GetToken(adress common.Address, client *ethclient.Client) *IERC20.IERC20 {
 	}
 	return token
 }
-
-// GetPairPriceAtBlock
