@@ -2,6 +2,7 @@ package uniswap
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/big"
 	"os"
@@ -15,70 +16,61 @@ import (
 	"github.com/zombeer/go-uniswap-info/gen/IUniswapV2Pair"
 )
 
-type Reserves struct {
-	Reserve0           *big.Int
-	Reserve1           *big.Int
-	BlockTimestampLast uint32
-}
+const UNISWAP_FACTORY_ADDRESS = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
+const PAIR_ADRESS = "0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11"
 
-type Token struct {
-	Adress common.Address
-	Symbol string
-	Name   string
-}
-
-type Pair struct {
-	Adress   common.Address
-	Reserves Reserves
-	Token0   Token
-	Token1   Token
-	Price    *big.Float
-}
-
-func GetPairDetails(pair *IUniswapV2Pair.IUniswapV2Pair, blockNumber *big.Int, client *ethclient.Client) *Pair {
-	result := Pair{}
-
-	callOpts := &bind.CallOpts{
+func GetCallOptsAtBlock(bn int64) bind.CallOpts {
+	return bind.CallOpts{
 		Context:     context.Background(),
-		BlockNumber: blockNumber,
+		BlockNumber: big.NewInt(bn),
 	}
-
-	r, _ := pair.GetReserves(callOpts)
-	result.Reserves = r
-
-	tkn0Address, err := pair.Token0(callOpts)
-	if err != nil {
-		log.Fatal("not able to get token0 address", err)
-	}
-	tkn1Address, err := pair.Token1(callOpts)
-	if err != nil {
-		log.Fatal("not able to get token1 address", err)
-	}
-	token0 := GetToken(tkn0Address, client)
-	token1 := GetToken(tkn1Address, client)
-
-	symbol0, _ := token0.Symbol(callOpts)
-	name0, _ := token0.Name(callOpts)
-	symbol1, _ := token1.Symbol(callOpts)
-	name1, _ := token0.Name(callOpts)
-
-	result.Token0 = Token{
-		Adress: tkn0Address,
-		Symbol: symbol0,
-		Name:   name0,
-	}
-
-	result.Token1 = Token{
-		Adress: tkn1Address,
-		Name:   name1,
-		Symbol: symbol1,
-	}
-
-	reserve0 := big.NewFloat(0).SetInt(result.Reserves.Reserve0)
-	reserve1 := big.NewFloat(0).SetInt(result.Reserves.Reserve1)
-	result.Price = big.NewFloat(0).Quo(reserve1, reserve0)
-	return &result
 }
+
+type Price struct {
+	BlockNumber uint64  `json:"block_number"`
+	Value       float64 `json:"value"`
+}
+
+type TokenInfo struct {
+	Address string `json:"address"`
+	Symbol  string `json:"symbol"`
+}
+
+type PairInfo struct {
+	Address string    `json:"pair_address"`
+	Symbols string    `json:"symbols"`
+	Token0  TokenInfo `json:"token0"`
+	Token1  TokenInfo `json:"token1"`
+	Prices  []Price   `json:"prices"`
+}
+
+// Getting pair info by its hex address string representation
+func GetPairInfo(address string) PairInfo {
+	result := PairInfo{
+		Address: address,
+	}
+	client := GetClient()
+	currentBn, _ := client.BlockNumber(context.Background())
+	callOpts := GetCallOptsAtBlock(int64(currentBn))
+	pairAddress := common.HexToAddress(address)
+
+	pair := GetPair(pairAddress, client)
+	tkn0Address, _ := pair.Token0(&callOpts)
+	tkn1Address, _ := pair.Token1(&callOpts)
+
+	tkn0 := GetToken(tkn0Address, client)
+	tkn1 := GetToken(tkn1Address, client)
+
+	tkn0Symbol, _ := tkn0.Symbol(&callOpts)
+	tkn1Symbol, _ := tkn1.Symbol(&callOpts)
+
+	result.Symbols = fmt.Sprintf("%s-%s", tkn0Symbol, tkn1Symbol)
+	result.Token0 = TokenInfo{Address: tkn0Address.String(), Symbol: tkn0Symbol}
+	result.Token1 = TokenInfo{Address: tkn1Address.String(), Symbol: tkn1Symbol}
+	return result
+}
+
+func GetPairPrices(pairAddress string) {}
 
 func GetClient() *ethclient.Client {
 	err := godotenv.Load()
@@ -93,7 +85,7 @@ func GetClient() *ethclient.Client {
 	return client
 }
 
-func GetUniswapFactory(address string, client *ethclient.Client) *IUniswapV2Factory.IUniswapV2Factory {
+func GetFactory(address string, client *ethclient.Client) *IUniswapV2Factory.IUniswapV2Factory {
 	factoryAdress := common.HexToAddress(address)
 	factory, err := IUniswapV2Factory.NewIUniswapV2Factory(factoryAdress, client)
 	if err != nil {
@@ -102,7 +94,7 @@ func GetUniswapFactory(address string, client *ethclient.Client) *IUniswapV2Fact
 	return factory
 }
 
-func GetUniswapPair(address common.Address, client *ethclient.Client) *IUniswapV2Pair.IUniswapV2Pair {
+func GetPair(address common.Address, client *ethclient.Client) *IUniswapV2Pair.IUniswapV2Pair {
 	pair, err := IUniswapV2Pair.NewIUniswapV2Pair(address, client)
 	if err != nil {
 		log.Fatal("not able to get uniswap pair at address", address.String(), err)
@@ -117,3 +109,5 @@ func GetToken(adress common.Address, client *ethclient.Client) *IERC20.IERC20 {
 	}
 	return token
 }
+
+// GetPairPriceAtBlock
