@@ -54,7 +54,7 @@ func GetPairInfo(address string) PairInfo {
 
 	wg := sync.WaitGroup{}
 	prices := []Price{}
-	for i := currentBn - 100; i <= currentBn; i++ {
+	for i := currentBn - 1000; i <= currentBn; i++ {
 		wg.Add(1)
 		go func(i uint64) {
 			prices = append(prices, GetPairPriceAtBn(*pair, int64(i)))
@@ -81,7 +81,11 @@ func GetPairPriceAtBn(pair IUniswapV2Pair.IUniswapV2Pair, bn int64) Price {
 	reserve1 := big.NewFloat(0).SetInt(reserves.Reserve1)
 	pairPrice := big.NewFloat(0).Quo(reserve0, reserve1)
 	price, _ := pairPrice.Float64()
-	return Price{BlockNumber: uint64(bn), Value: price}
+	return Price{
+		BlockNumber: uint64(bn),
+		Value:       price,
+		Timestamp:   reserves.BlockTimestampLast,
+	}
 }
 
 func GetClient() *ethclient.Client {

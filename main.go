@@ -1,9 +1,7 @@
 package main
 
-import (
-	"github.com/zombeer/go-uniswap-info/api"
-)
+import "github.com/zombeer/go-uniswap-info/server"
 
 func main() {
-	api.StartServer()
+	server.Start()
 }

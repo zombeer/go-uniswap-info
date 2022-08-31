@@ -3,6 +3,7 @@ package uniswap
 type Price struct {
 	BlockNumber uint64  `json:"bn"`
 	Value       float64 `json:"value"`
+	Timestamp   uint32  `json:"timestamp"`
 }
 
 type TokenInfo struct {
