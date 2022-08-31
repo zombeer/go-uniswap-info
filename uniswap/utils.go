@@ -28,7 +28,7 @@ func Min(x, y float64) float64 {
 }
 
 func TruncateTimestamp(ts uint32) time.Time {
-	d := 1 * time.Minute
+	d := 5 * time.Minute
 	truncatedTs := time.UnixMilli(int64(ts) * 1000).Truncate(d)
 	return truncatedTs
 }
@@ -38,25 +38,22 @@ func PricesToCandles(prices []Price) [][]string {
 		return nil
 	}
 	result := [][]string{}
-	currentCandle := Candle{Open: 0}
+	currentCandle := Candle{}
 
 	for i, price := range prices {
 		truncatedTs := TruncateTimestamp(price.Timestamp)
 		pValue := price.Value
 
-		println(
-			currentCandle.Timestamp.String(),
-			currentCandle.Open,
-			currentCandle.High,
-			currentCandle.Low,
-			currentCandle.Close,
-		)
+		if i == 0 {
+			currentCandle = Candle{
+				Open:      pValue,
+				High:      pValue,
+				Low:       pValue,
+				Close:     pValue,
+				Timestamp: truncatedTs}
+		}
 
-		if truncatedTs == currentCandle.Timestamp || i == 0 {
-			if currentCandle.Open == 0 {
-				currentCandle.Open = pValue
-				currentCandle.Timestamp = truncatedTs
-			}
+		if truncatedTs == currentCandle.Timestamp {
 			currentCandle.High = Max(currentCandle.High, pValue)
 			currentCandle.Low = Min(currentCandle.High, pValue)
 			currentCandle.Close = pValue
@@ -74,10 +71,10 @@ func PricesToCandles(prices []Price) [][]string {
 				},
 			)
 			currentCandle = Candle{
-				Open:      0,
-				High:      0,
-				Low:       0,
-				Close:     0,
+				Open:      pValue,
+				High:      pValue,
+				Low:       pValue,
+				Close:     pValue,
 				Timestamp: truncatedTs}
 		}
 	}
