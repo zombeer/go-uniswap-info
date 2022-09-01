@@ -71,7 +71,7 @@ func PricesToCandles(prices []Price) [][]string {
 				},
 			)
 			currentCandle = Candle{
-				Open:      pValue,
+				Open:      prices[i-1].Value,
 				High:      pValue,
 				Low:       pValue,
 				Close:     pValue,
@@ -80,6 +80,3 @@ func PricesToCandles(prices []Price) [][]string {
 	}
 	return result
 }
-
-// 1661126400000
-// 1661958000000000
